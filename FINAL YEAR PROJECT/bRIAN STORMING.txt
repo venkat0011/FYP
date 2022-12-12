@@ -1,0 +1,31 @@
+i WANT the overall structure of the application to be like
+https://tympanus.net/Development/Interactive3DMallMap/
+
+But we cannot use that structure there are a few things that needs to be modified
+1. is the shape of the floors, in that app all the floors have the same shape but in the library they do not have the same shape
+2. The angle that we show the selected floor from has to change. Instead of showing it from the side we need to show it at an birds eye few and we need to include the key points like the plug point
+3. We need to add functionality for them to book facilities
+4. we need to change the color of the chairs based on the occupancy
+5. we need to find the number of seats left and teh percentage of seats left and display it
+6. we need to find the number of plug points occupied as well ( assume one person takes up one plug point)
+7. if there is time look into navigating to the place where we want to find a book
+
+Refer to 
+https://github.com/osiris-indoor/osiris
+to see how to create the floor plans and stuff -> use JOSM which is open source see how u can link it to the website later on
+
+
+
+For the overall view we can refer to the 
+https://maps.ntu.edu.sg/#/ntu/d386ffa80e4e46f286d17f08/poi/details/d12e80c7bf804a34ba648f2b
+
+
+the information changes all the time so we need to update the map all the time
+so see if creating a pipeline is possible ( we can even use jenkins)
+
+
+FOR THE HARDWARE:
+
+We need to look inot the different type of sensing and how it senses
+
+Since the paper say we can detect the posture we are only detecting people that are sitting down -> we need to some how link it to the map and see which exact seat is takem 
