@@ -1,56 +1,153 @@
-import flet as ft
-def main(page: ft.Page):
-    page.title = "outline test "
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+#
+# #
+#
+#
+# # follow this structure for the tkinter app
+# import tkinter as tk
+# from tkinter import ttk
+#
+# LARGEFONT = ("Verdana", 35)
+#
+#
+# class tkinterApp(tk.Tk):
+#
+#     # __init__ function for class tkinterApp
+#     def __init__(self, *args, **kwargs):
+#         # __init__ function for class Tk
+#         tk.Tk.__init__(self, *args, **kwargs)
+#
+#         # creating a container
+#         container = tk.Frame(self)
+#         container.pack(side="top", fill="both", expand=True)
+#
+#         container.grid_rowconfigure(0, weight=1)
+#         container.grid_columnconfigure(0, weight=1)
+#
+#         # initializing frames to an empty array
+#         self.frames = {}
+#
+#         # iterating through a tuple consisting
+#         # of the different page layouts
+#         for F in (StartPage, Page1, Page2):
+#             frame = F(container, self)
+#
+#             # initializing frame of that object from
+#             # startpage, page1, page2 respectively with
+#             # for loop
+#             self.frames[F] = frame
+#
+#             frame.grid(row=0, column=0, sticky="nsew")
+#
+#         self.show_frame(StartPage)
+#
+#     # to display the current frame passed as
+#     # parameter
+#     def show_frame(self, cont):
+#         frame = self.frames[cont]
+#         frame.tkraise()
+#
+#
+# # first window frame startpage
+#
+# class StartPage(tk.Frame):
+#     def __init__(self, parent, controller):
+#         tk.Frame.__init__(self, parent)
+#
+#         # label of frame Layout 2
+#         label = ttk.Label(self, text="Startpage", font=LARGEFONT)
+#
+#         # putting the grid in its place by using
+#         # grid
+#         label.grid(row=0, column=4, padx=10, pady=10)
+#
+#         button1 = ttk.Button(self, text="Page 1",
+#                              command=lambda: controller.show_frame(Page1))
+#
+#         # putting the button in its place by
+#         # using grid
+#         button1.grid(row=1, column=1, padx=10, pady=10)
+#
+#         ## button to show frame 2 with text layout2
+#         button2 = ttk.Button(self, text="Page 2",
+#                              command=lambda: controller.show_frame(Page2))
+#
+#         # putting the button in its place by
+#         # using grid
+#         button2.grid(row=2, column=1, padx=10, pady=10)
+#
+#
+# # second window frame page1
+# class Page1(tk.Frame):
+#
+#     def __init__(self, parent, controller):
+#         tk.Frame.__init__(self, parent)
+#         label = ttk.Label(self, text="Page 1", font=LARGEFONT)
+#         label.grid(row=0, column=4, padx=10, pady=10)
+#
+#         # button to show frame 2 with text
+#         # layout2
+#         button1 = ttk.Button(self, text="StartPage",
+#                              command=lambda: controller.show_frame(StartPage))
+#
+#         # putting the button in its place
+#         # by using grid
+#         button1.grid(row=1, column=1, padx=10, pady=10)
+#
+#         # button to show frame 2 with text
+#         # layout2
+#         button2 = ttk.Button(self, text="Page 2",
+#                              command=lambda: controller.show_frame(Page2))
+#
+#         # putting the button in its place by
+#         # using grid
+#         button2.grid(row=2, column=1, padx=10, pady=10)
+#
+#
+# # third window frame page2
+# class Page2(tk.Frame):
+#     def __init__(self, parent, controller):
+#         tk.Frame.__init__(self, parent)
+#         label = ttk.Label(self, text="Page 2", font=LARGEFONT)
+#         label.grid(row=0, column=4, padx=10, pady=10)
+#
+#         # button to show frame 2 with text
+#         # layout2
+#         button1 = ttk.Button(self, text="Page 1",
+#                              command=lambda: controller.show_frame(Page1))
+#
+#         # putting the button in its place by
+#         # using grid
+#         button1.grid(row=1, column=1, padx=10, pady=10)
+#
+#         # button to show frame 3 with text
+#         # layout3
+#         button2 = ttk.Button(self, text="Startpage",
+#                              command=lambda: controller.show_frame(StartPage))
+#
+#         # putting the button in its place by
+#         # using grid
+#         button2.grid(row=2, column=1, padx=10, pady=10)
+#
+#
+# # Driver Code
+# app = tkinterApp()
+# app.mainloop()
+#
+#
+#
+# # this changing between the frames should be done with the schema page itself since all will follow the same structure
+# # but for the main app page and the schema page it might be better to use it as a window
+from operator import itemgetter
+# import numpy as np
+# array = [50,230]
+# array = np.floor_divide(array,50) -1
+# # sorted_li = sorted(array)
+# # print(sorted_li)
+# if([0,0] in array):
+#     print("sye")
 
-    # create a space for the room -> create a container
-
-    page.add(
-        ft.Row(
-            [
-                ft.IconButton(ft.icons.REMOVE, on_click=minus_click),
-                ft.Icon(ft.icons.CIRCLE),
-                ft.IconButton(ft.icons.ADD, on_click=plus_click),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-        )
-    )
-
-ft.app(target=main)
-
-
-
-# this instance represent the room
-# the room has 1 property which is the chairs that are stored within that room
-# for 2 d room, the coordinate array will be a tuple of x and y coordinate
-# the style shows the format of the room is it 1d in the x or y and is it 2d
-class room:
-    def __init__(self,coordinate_array,style):
-        if(style=="x"):
-            for i in range(0,len(coordinate_array)):
-                local_chair = chair(coordinate_array[i],15);
-        elif(style=="y"):
-            for i in range(0,len(coordinate_array)):
-                local_chair = chair(15,coordinate_array[i]);
-        else:
-            for i in range(0,len(coordinate_array)):
-                coordinate = coordinate_array[i]
-                local_chair = chair(coordinate[0],coordinate[1]);
-
-
-
-
-
-# this is the chair class represent an instance of a chair
-# the chair will have 3 properties: the x coordinate, y coodinate and the status
-# the status will follow 3 states -> available, unavailable and maybe
-class chair:
-
-    def __init__(self,x_coordinate,y_coordinate):
-	    # initializations
-        self.x_coordinate = x_coordinate
-        self.y_coordinate = y_coordinate
-        self.status = "Available"
-
-
-
+a = []
+def foo():
+    a.append("he")
+foo()
+print(a)
