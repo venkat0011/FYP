@@ -1,0 +1,1 @@
+rawDataReader('testing.setup.json','person_250_raw', 'person_250_fft', 0);
