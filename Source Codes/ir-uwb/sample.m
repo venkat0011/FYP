@@ -1,6 +1,6 @@
 % this will be the offical script 
 %% Reading the CSV File
-function likelystates = IR_UWB_function(seat_location)
+function likelystates = IR_UWB_function(file_path,seat_location)
 close all
 try
 tic

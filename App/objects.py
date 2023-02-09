@@ -1,206 +1,106 @@
-#
-# #
-#
-#
-# # follow this structure for the tkinter app
-# import tkinter as tk
-# from tkinter import ttk
-#
-# LARGEFONT = ("Verdana", 35)
-#
-#
-# class tkinterApp(tk.Tk):
-#
-#     # __init__ function for class tkinterApp
-#     def __init__(self, *args, **kwargs):
-#         # __init__ function for class Tk
-#         tk.Tk.__init__(self, *args, **kwargs)
-#
-#         # creating a container
-#         container = tk.Frame(self)
-#         container.pack(side="top", fill="both", expand=True)
-#
-#         container.grid_rowconfigure(0, weight=1)
-#         container.grid_columnconfigure(0, weight=1)
-#
-#         # initializing frames to an empty array
-#         self.frames = {}
-#
-#         # iterating through a tuple consisting
-#         # of the different page layouts
-#         for F in (StartPage, Page1, Page2):
-#             frame = F(container, self)
-#
-#             # initializing frame of that object from
-#             # startpage, page1, page2 respectively with
-#             # for loop
-#             self.frames[F] = frame
-#
-#             frame.grid(row=0, column=0, sticky="nsew")
-#
-#         self.show_frame(StartPage)
-#
-#     # to display the current frame passed as
-#     # parameter
-#     def show_frame(self, cont):
-#         frame = self.frames[cont]
-#         frame.tkraise()
-#
-#
-# # first window frame startpage
-#
-# class StartPage(tk.Frame):
-#     def __init__(self, parent, controller):
-#         tk.Frame.__init__(self, parent)
-#
-#         # label of frame Layout 2
-#         label = ttk.Label(self, text="Startpage", font=LARGEFONT)
-#
-#         # putting the grid in its place by using
-#         # grid
-#         label.grid(row=0, column=4, padx=10, pady=10)
-#
-#         button1 = ttk.Button(self, text="Page 1",
-#                              command=lambda: controller.show_frame(Page1))
-#
-#         # putting the button in its place by
-#         # using grid
-#         button1.grid(row=1, column=1, padx=10, pady=10)
-#
-#         ## button to show frame 2 with text layout2
-#         button2 = ttk.Button(self, text="Page 2",
-#                              command=lambda: controller.show_frame(Page2))
-#
-#         # putting the button in its place by
-#         # using grid
-#         button2.grid(row=2, column=1, padx=10, pady=10)
-#
-#
-# # second window frame page1
-# class Page1(tk.Frame):
-#
-#     def __init__(self, parent, controller):
-#         tk.Frame.__init__(self, parent)
-#         label = ttk.Label(self, text="Page 1", font=LARGEFONT)
-#         label.grid(row=0, column=4, padx=10, pady=10)
-#
-#         # button to show frame 2 with text
-#         # layout2
-#         button1 = ttk.Button(self, text="StartPage",
-#                              command=lambda: controller.show_frame(StartPage))
-#
-#         # putting the button in its place
-#         # by using grid
-#         button1.grid(row=1, column=1, padx=10, pady=10)
-#
-#         # button to show frame 2 with text
-#         # layout2
-#         button2 = ttk.Button(self, text="Page 2",
-#                              command=lambda: controller.show_frame(Page2))
-#
-#         # putting the button in its place by
-#         # using grid
-#         button2.grid(row=2, column=1, padx=10, pady=10)
-#
-#
-# # third window frame page2
-# class Page2(tk.Frame):
-#     def __init__(self, parent, controller):
-#         tk.Frame.__init__(self, parent)
-#         label = ttk.Label(self, text="Page 2", font=LARGEFONT)
-#         label.grid(row=0, column=4, padx=10, pady=10)
-#
-#         # button to show frame 2 with text
-#         # layout2
-#         button1 = ttk.Button(self, text="Page 1",
-#                              command=lambda: controller.show_frame(Page1))
-#
-#         # putting the button in its place by
-#         # using grid
-#         button1.grid(row=1, column=1, padx=10, pady=10)
-#
-#         # button to show frame 3 with text
-#         # layout3
-#         button2 = ttk.Button(self, text="Startpage",
-#                              command=lambda: controller.show_frame(StartPage))
-#
-#         # putting the button in its place by
-#         # using grid
-#         button2.grid(row=2, column=1, padx=10, pady=10)
-#
-#
-# # Driver Code
-# app = tkinterApp()
-# app.mainloop()
-#
-#
-#
-# # this changing between the frames should be done with the schema page itself since all will follow the same structure
-# # but for the main app page and the schema page it might be better to use it as a window
-from operator import itemgetter
-# import numpy as np
-# array = [50,230]
-# array = np.floor_divide(array,50) -1
-# # sorted_li = sorted(array)
-# # print(sorted_li)
-# if([0,0] in array):
-#     print("sye")
-from apscheduler.schedulers.background import BackgroundScheduler
-
-import time
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget
+from PyQt5.QtGui import QFont
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
+import matlab.engine
 import threading
+from functools import partial
+class MatlabThread(QtCore.QThread):
+    matlab_start_signal = QtCore.pyqtSignal()
+    engine = None
+    def run(self):
+        # Start Matlab engine here
+        self.engine = matlab.engine.start_matlab()
+        self.matlab_start_signal.emit()
 
-# Define the stop function
-def stop_function():
-    return True
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-# Define the loop function
-def loop_function(stop_event: threading.Event):
-    while not stop_event.is_set():
-        print("Loop running...")
+        # set the title
+        self.setWindowTitle("Welcome")
 
-# Define the second task function
-def second_task(stop_event: threading.Event):
-    while not stop_event.is_set():
-        print("Second task")
+        # create the central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
 
-stop_event = threading.Event()
+        # create the main layout
+        self.main_layout = QGridLayout()
+        central_widget.setLayout(self.main_layout)
 
-# Create a thread for the loop function
-loop_thread = threading.Thread(target=loop_function, args=(stop_event,))
+        # add the label
+        label = QLabel("Occupancy Sensing Using RF sensing", self)
+        label.setFont(QFont("Arial", 20))
+        self.main_layout.addWidget(label, 0, 0, 1, 1, Qt.AlignCenter)
 
-# Create a thread for the second task function
-second_thread = threading.Thread(target=second_task, args=(stop_event,))
+        # progress label
+        self.progress_label = QLabel("Please wait, the app is connecting to MATLAB", self)
+        self.progress_label.setFont(QFont("Arial", 15))
+        self.progress_label.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.addWidget(self.progress_label, 1, 0, 1, 1, Qt.AlignCenter)
 
-# Start the loop thread
-loop_thread.start()
-time.sleep(0.4)
-# Start the second thread
-second_thread.start()
+        self.matlab_thread = MatlabThread()
+        self.matlab_thread.matlab_start_signal.connect(self.on_matlab_started)
+        self.matlab_thread.start()
 
-# Wait for the stop function to be called
-# while not stop_function():
-#     pass
-time.sleep(5)
-# Set the stop event
-stop_event.set()
+        # establish connection to matlab
+        # self.stop_event = threading.Event()
+    def on_matlab_started(self):
+        # add the schema selection label
+        self.progress_label.setText("Please select the type of RF sensor to be used")
+        #
+        # # add the Ir-uwb button
+        ir_uwb_button = QPushButton("Ir-uwb", self)
+        ir_uwb_button.clicked.connect(self.display_schema_choice)
+        ir_uwb_button.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.addWidget(ir_uwb_button, 3, 0, 1, 1, Qt.AlignCenter)
+        #
+        # # add the FMCW button
+        fmcw_button = QPushButton("FMCW", self)
+        fmcw_button.clicked.connect(self.display_schema_choice)
+        fmcw_button.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.addWidget(fmcw_button, 4, 0, 1, 1, Qt.AlignCenter)
 
-# Join the loop thread
-loop_thread.join()
+    def display_schema_choice(self):
+        # implement the display_schema_choice function
+        self.schema_selection_window = SchemaSelection()
+        self.schema_selection_window.show()
+        self.hide()
+        pass
 
-# Join the second thread
-second_thread.join()
+
+class SchemaSelection(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        # set the title
+        self.setWindowTitle("IR-UWB")
+
+        # create the central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # create the main layout
+        main_layout = QGridLayout()
+        central_widget.setLayout(main_layout)
+
+        # add the label
+        label = QLabel("Choose a schema", self)
+        label.setFont(QFont("Arial", 20))
+        main_layout.addWidget(label)
 
 
-# sched.add_job(lambda :second_task(sched),"interval",seconds=0.5)
-# Start the scheduler
-# while True:
-#     sched.start()
-#     #wait for the scheduler to stop
-#     sched.join()
+# create the application
+app = QApplication([])
 
-# Wait for some time before stopping the loop
-# time.sleep(30)
-#
-# # Stop the loop
-# break_loop(sched)
+# create the main window
+main_window = MainWindow()
+
+# show the main window
+main_window.show()
+
+# run the application
+app.exec_()
+
+
+

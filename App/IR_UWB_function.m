@@ -1,9 +1,9 @@
 % this will be the offical script 
 %% Reading the CSV File
-function likelystates = IR_UWB_function(seat_location)
+function likelystates = IR_UWB_function(file_path,seat_location)
 close all
 try
-data =  csvread('z:\radar_x.csv'); 
+data =  csvread(file_path); 
 %% Converting the file into complex numbers
 recieved_signal = data(:,1:141) +1j*data(:,142:end);
 count = size(recieved_signal);

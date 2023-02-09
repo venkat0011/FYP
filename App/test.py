@@ -19,6 +19,7 @@ import threading
 import paramiko
 import timeit
 import os
+from queue import Queue
 LARGEFONT = ("Verdana", 15)
 
 
@@ -48,7 +49,7 @@ def display_window(old_window, new_window):
     old_window.withdraw()
     new_window.deiconify()
 
-def start_sensor(stop_event: threading.Event,shell,button_frame,label,excel_ready:threading.Event,seat_coordinates,seat_canvas):
+def start_sensor(stop_event: threading.Event,shell,button_frame,label,seat_coordinates,file_path,queue,seat_canvas):
         label["text"] = "Running RADAR and MATLAB CODE"
         button_frame.update()
         shell.send("cd testing_realtime/ \n")
@@ -63,43 +64,52 @@ def start_sensor(stop_event: threading.Event,shell,button_frame,label,excel_read
                 output_str = output.decode()
                 if("done" in output_str):
                     print(output_str)
-                    excel_ready.set()
                     break
             time.sleep(0.5)
-            # label["text"] = "running matlab code"
-            state = eng.IR_UWB_function(matlab.int32(seat_coordinates))
-            print(state)
-            # label["text"] = "displaying states"
-            for i in range(len(seat_coordinates)):
+            state = eng.IR_UWB_function(file_path,matlab.int32(seat_coordinates))
+            os.remove(file_path)
+            if(queue is  None):
+                for i in range(len(seat_coordinates)):
+                    #     # this will give us the number of seat, and we can access the relevant frame
+                    if (state[i][-1] == 2):
+                        seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="red")
+                    else:
+                        seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="green")
+                print("time taken",time.time()-start_time)
+            else:
+                queue.put(state)
+
+
+def test_function(shell,file_path,seat_coordinates,queue):
+    shell.send("cd testing_realtime/ \n")
+    while not shell.recv_ready():
+        pass
+    start_time = time.time()
+    shell.send("./Runme \n")
+    print("checking if it is done")
+    while (1):
+        output = shell.recv(1024)
+        output_str = output.decode()
+        if ("done" in output_str):
+            print(output_str)
+            break
+    time.sleep(0.5)
+    print("running matlab")
+    state = eng.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
+    os.remove(file_path)
+    print("completed matlab")
+    queue.put(state)
+
+def display_state(queue,seat_coordinates,seat_canvas):
+        state = queue.get()
+        print(state) # we will get 2 array one for the x and the other for the y axis
+        for i in range(len(seat_coordinates)):
                 #     # this will give us the number of seat, and we can access the relevant frame
                 if (state[i][-1] == 2):
                     seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="red")
                 else:
                     seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="green")
-            os.remove("z:/radar_x.csv")
-            print("time taken",time.time()-start_time)
-
-
-        # shell.sendall(chr(3))
-            # we need to read the output to know if the run me is completed as the shell/channel can still recieve command
-
-
-def run_matlab(stop_event: threading.Event,seat_coordinates,seat_canvas,excel_ready: threading.Event):
-    while not stop_event.is_set():
-        if(excel_ready.is_set()):
-            print("running matlab code")
-            state = eng.IR_UWB_function(matlab.int32(seat_coordinates))
-            time.sleep(0.5)
-            print(state)
-            for i in range(len(seat_coordinates)):
-                #     # this will give us the number of seat, and we can access the relevant frame
-                if (state[i][-1] == 2):
-                    seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="red")
-                else:
-                    seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="green")
-            os.remove("z:/radar_x.csv")
-            excel_ready.clear()
-
+        queue.queue.clear()
 
 def start_ir_uwb(button_frame,seat_coordinates,seat_canvas,label):
     stop_event.clear()
@@ -116,32 +126,45 @@ def start_ir_uwb(button_frame,seat_coordinates,seat_canvas,label):
         channel = ssh_x.invoke_shell()
         stop_button = ttk.Button(button_frame, text="Stop",
                                  command=lambda: stop_ir_uwb(button_frame, seat_coordinates, seat_canvas, label,
-                                                             ssh_x, channel))
-        excel_ready = threading.Event()
-        loop_thread = threading.Thread(target=start_sensor, args=(stop_event,channel,button_frame,label,excel_ready, seat_coordinates, seat_canvas))
-        matlab_thread = threading.Thread(target=run_matlab, args=(stop_event, seat_coordinates, seat_canvas,excel_ready))
+                                                             [ssh_x], [channel]))
+        # main_thread(stop_event,0,channel,label,button_frame,seat_coordinates,queue,seat_canvas)
+        loop_thread = threading.Thread(target=start_sensor, args=(stop_event,channel,button_frame,label,
+                                                                  seat_coordinates,"z:/radar_x.csv",None,seat_canvas))
         loop_thread.start()
-        # time.sleep(1)
-        # print("status of excel",excel_ready.is_set())
-        # matlab_thread.start()
+        # loop_thread.join()
+        # display_state(queue,seat_coordinates,seat_canvas,0)
+
 
 
     else:
+        label["text"] = " SSH into RPI 1"
+        button_frame.update()
         ssh_x = paramiko.SSHClient()
         ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
+        label["text"] = " SSH into RPI 2"
+        button_frame.update()
         ssh_y = paramiko.SSHClient()
         ssh_y.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
         ssh_y.connect(y_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
-        print("done ssh")
+        channel_x = ssh_x.invoke_shell()
+        channel_y = ssh_y.invoke_shell()
+        stop_button = ttk.Button(button_frame, text="Stop",
+                                 command=lambda: stop_ir_uwb(button_frame, seat_coordinates, seat_canvas, label,
+                                                             [ssh_x,ssh_y], [channel_x,channel_y]))
+        stop_button.grid(row=1, column=0)
+        button_frame.update()
+        queue = Queue()
+        while (not stop_event.is_set()):
+        # thread1_event = threading.Event()
+        # thread2_event = threading.Event()
+            thread1 = threading.Thread(target=test_function, args=(channel_x,"z:/radar_x.csv",seat_coordinates,queue))
+            thread2 = threading.Thread(target=test_function, args=(channel_y,"y:/radar_y.csv",seat_coordinates,queue))
+            thread1.start()
+            thread2.start()
 
-        stdin, stdout, stderr = ssh_x.exec_command("hostname -I")
-        print("sensor 1",stdout.read())
-
-        stdin, stdout, stderr = ssh_y.exec_command("hostname -I")
-        print("sensor 2",stdout.read())
 
 
     #download the file from rpi
@@ -150,8 +173,10 @@ def start_ir_uwb(button_frame,seat_coordinates,seat_canvas,label):
     button_frame.update()
 
 def stop_ir_uwb(button_frame,seat_coordinates,seat_canvas,label,ssh,channel ):
-    channel.close()
-    ssh.close()
+    for i in channel:
+        i.close()
+    for i in ssh:
+        i.close()
     label["text"] = "stopping sensor"
     stop_event.set()
     label['text'] = "Press start to start the sensor again"
@@ -460,12 +485,4 @@ button2.grid(row=4,column=4,padx=10,pady=20)
 
 main_app.update()
 
-#
-# ## button to show frame 2 with text layout2
-# button2 = ttk.Button(main_app, text="Page 2",
-#                      command=lambda: controller.show_frame(Page2))
-#
-# # putting the button in its place by
-# # using grid
-# button2.grid(row=4, column=4, padx=10, pady=10)
 main_app.mainloop()
