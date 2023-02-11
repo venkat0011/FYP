@@ -5,6 +5,10 @@ from PyQt5.QtCore import Qt, QSize
 import matlab.engine
 import threading
 from functools import partial
+
+from qtpy import QtWidgets
+
+
 class MatlabThread(QtCore.QThread):
     matlab_start_signal = QtCore.pyqtSignal()
     engine = None
@@ -157,7 +161,18 @@ class SchemaSelection(QMainWindow):
         self.hide()
 
     def display_y_schema(self):
-        print('hello')
+
+        flag = False
+        while(not flag):
+            seat_input, done1 = QtWidgets.QInputDialog.getText(
+                self, 'Seat Coordinates', 'Enter the number of seats from 1 to 10')
+            if(done1):
+                no_of_chair = check_coordinates(1, 10, [seat_input])
+                if(type(no_of_chair) == list):
+                    flag = True
+        no_of_chair = no_of_chair[0]
+        self.user_input = Seat_Input(0,no_of_chair)
+        self.user_input.show()
     def display_x_schema(self):
         print("going to x")
     def display_z_schema(self):
@@ -174,6 +189,33 @@ class SchemaSelection(QMainWindow):
     # Button(Frame, "Y Direction", lambda: get_coordinates(0, new_window,window_count), (60, 266), 1, 0, "y_direction.png", 20, 20)
     # Button(Frame, "X Direction", lambda: get_coordinates(1, new_window,window_count), (300, 40), 1, 1, "x_direction.png", 35, 140)
     # Button(Frame, "2 Dimension", lambda: get_coordinates(2, new_window,window_count), (106, 200), 1, 2, "2d_space.png", 30, 50)
+
+def check_coordinates(min_range,max_range,entry_list):
+    try:
+        temp = []
+        for i in entry_list:
+            number = int(i)
+            if (number >= min_range and number <= max_range):
+                temp.append(i)
+            else:
+                return False
+
+        return temp
+    except:
+        return False
+
+class Seat_Input(QMainWindow):
+    def __init__(self,mode,number_of_chairs):
+        super().__init__()
+        self.mode = mode
+        self.number_of_chair = number_of_chairs
+        # set the title
+        self.setWindowTitle("Seat Coordinates")
+        # the seat input from here will be passed to the schema displayed page
+        # create 3 sub classes for each different schema, and we will intialise the seat canvas as well as the seat coordinates into the class attributes
+
+        # create the schema for entering the coordinates of the seats based on the mode and the number of seats 
+
 
 # create the application
 app = QApplication([])
