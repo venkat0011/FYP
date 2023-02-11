@@ -107,6 +107,7 @@ class SchemaSelection(QMainWindow):
         button_icon = QIcon(pixmap)
         y_button.setIcon(button_icon)
         y_button.setIconSize(QSize(60, 266))
+        y_button.clicked.connect(self.display_y_schema)
         main_layout.addWidget(y_button, 1, 0, 1, 1, Qt.AlignCenter)
 
         # label for the button
@@ -114,13 +115,53 @@ class SchemaSelection(QMainWindow):
         y_label.setFont(QFont('Arial', 10))
         main_layout.addWidget(y_label, 2, 0, 1, 1, Qt.AlignCenter)
 
+        vlayout = QVBoxLayout()
+
+        x_button = QPushButton(self)
+        x_button.setMaximumSize(310, 50)
+        # Load an image from file
+        pixmap = QPixmap("x_direction.png")
+        button_icon = QIcon(pixmap)
+        x_button.setIcon(button_icon)
+        x_button.setIconSize(QSize(300, 40))
+        x_button.clicked.connect(self.display_x_schema)
+        vlayout.addWidget(x_button)
+        # label for the button
+        x_label = QLabel("X Direction", self)
+        x_label.setFont(QFont('Arial', 10))
+        vlayout.addWidget(x_label)
+
+        main_layout.addItem(vlayout,1,1,1,1,Qt.AlignCenter)
+
+        vlayout = QVBoxLayout()
+        z_button = QPushButton(self)
+        z_button.setMaximumSize(150, 100)
+        # Load an image from file
+        pixmap = QPixmap("2d_space.png")
+        button_icon = QIcon(pixmap)
+        z_button.setIcon(button_icon)
+        z_button.setIconSize(QSize(150, 150))
+        z_button.clicked.connect(self.display_z_schema)
+        vlayout.addWidget(z_button)
+
+        # label for the button
+        z_button = QLabel("2 D Space", self)
+        z_button.setFont(QFont('Arial', 10))
+        vlayout.addWidget(z_button)
+
+        main_layout.addItem(vlayout,1,2,1,1,Qt.AlignCenter)
+
     def display_home(self):
-        home_page = MainWindow()
-        home_page.show()
+        # home_page = MainWindow()
+        main_window.show()
         self.hide()
 
     def display_y_schema(self):
         print('hello')
+    def display_x_schema(self):
+        print("going to x")
+    def display_z_schema(self):
+        print("going to z")
 
 
 
