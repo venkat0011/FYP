@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget, QVBoxLayout
-from PyQt5.QtGui import QFont, QPixmap, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget, QVBoxLayout, \
+    QLineEdit, QFormLayout
+from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 import matlab.engine
@@ -161,18 +162,26 @@ class SchemaSelection(QMainWindow):
         self.hide()
 
     def display_y_schema(self):
-
         flag = False
+        count = 0
         while(not flag):
+            if(count==0):
+                text = "Enter the number of seats from 1 to 10"
+            else:
+                text = "Please enter a valid Integer ranging from 1 to 10"
             seat_input, done1 = QtWidgets.QInputDialog.getText(
-                self, 'Seat Coordinates', 'Enter the number of seats from 1 to 10')
+                self, 'Seat Coordinates', text)
+            count = count+1
             if(done1):
                 no_of_chair = check_coordinates(1, 10, [seat_input])
                 if(type(no_of_chair) == list):
                     flag = True
-        no_of_chair = no_of_chair[0]
-        self.user_input = Seat_Input(0,no_of_chair)
-        self.user_input.show()
+            else:
+                break
+        if(flag):
+            no_of_chair = int(no_of_chair[0])
+            self.user_input = Seat_Input(0,no_of_chair)
+            self.user_input.show()
     def display_x_schema(self):
         print("going to x")
     def display_z_schema(self):
@@ -196,7 +205,7 @@ def check_coordinates(min_range,max_range,entry_list):
         for i in entry_list:
             number = int(i)
             if (number >= min_range and number <= max_range):
-                temp.append(i)
+                temp.append(number)
             else:
                 return False
 
@@ -204,17 +213,118 @@ def check_coordinates(min_range,max_range,entry_list):
     except:
         return False
 
+def check_spacing(entry_list,mode):
+    if(mode!=2):
+        for i in range(len(entry_list) - 1):
+            for j in range(i + 1, len(entry_list)):
+                if abs(entry_list[i] - entry_list[j]) < 30:
+                    return False
+        return True
+    else:
+        x_coordinates = entry_list[0::2]
+        y_coordinates = entry_list[1::2]
+        if(check_spacing(x_coordinates,1) and check_spacing(y_coordinates,0) ):
+            return True
+        else:
+            return False
+
 class Seat_Input(QMainWindow):
-    def __init__(self,mode,number_of_chairs):
+    def __init__(self,mode,no_of_chair):
         super().__init__()
         self.mode = mode
-        self.number_of_chair = number_of_chairs
+        self.no_of_chair = no_of_chair
+        print(no_of_chair)
+
         # set the title
         self.setWindowTitle("Seat Coordinates")
+
+        # have a the text displayed based on the mode
+        if(mode==0):
+            text = "Enter the y coordinates of the seats in cm from 50 to 500cm"
+        elif(mode==1):
+            text = "Enter the x coordinates of the seats in cm from 50 to 500cm"
+        else:
+            text = "Enter the x & y coordinates of the seats in cm from 50 to 500cm"
+
+        # user input page
+        # create the central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        main_layout = QGridLayout()
+        central_widget.setLayout(main_layout)
+
+        # create a back button to go to seat page
+        back_button = QPushButton("Back", self)
+        back_button.clicked.connect(self.back)
+        back_button.setContentsMargins(10, 10, 10, 10)
+        main_layout.addWidget(back_button, 0, 0, 1, 1, Qt.AlignCenter)
+
+
+        # create a label widget to know what the user is going to type
+        self.main_label = QLabel(text, self)
+        self.main_label.setFont(QFont('Arial', 13))
+        main_layout.addWidget(self.main_label,0,1,1,1,Qt.AlignCenter)
+
+
+        self.entry_list= []
+        self.entry_count = 0
+        for i in range(0,no_of_chair):
+            print("entering for loop")
+            label= QLabel("Seat Number "+ str(i+1))
+            label.setFont(QFont('Arial', 10))
+            main_layout.addWidget(label, i+2, 0, 1, 1, Qt.AlignCenter)
+            if(mode!=2):
+                e1 = QLineEdit()
+                e1.setValidator(QIntValidator())
+                e1.editingFinished.connect(self.enterPress)
+                main_layout.addWidget(e1, i+2, 1,1,1,Qt.AlignCenter)
+                self.entry_list.append(e1)
+            else:
+                e1 = QLineEdit()
+                e1.setValidator(QIntValidator())
+                e1.editingFinished.connect(self.enterPress)
+                main_layout.addWidget(e1, i+2, 1,1,1,Qt.AlignCenter)
+                self.entry_list.append(e1)
+                
+                e2 = QLineEdit()
+                e2.setValidator(QIntValidator())
+                e2.editingFinished.connect(self.enterPress)
+                main_layout.addWidget(e1, i+2, 2,1,1,Qt.AlignCenter)
+                self.entry_list.append(e2)
+
+
+
+
+
+
+
         # the seat input from here will be passed to the schema displayed page
         # create 3 sub classes for each different schema, and we will intialise the seat canvas as well as the seat coordinates into the class attributes
 
-        # create the schema for entering the coordinates of the seats based on the mode and the number of seats 
+        # create the schema for entering the coordinates of the seats based on the mode and the number of seats
+
+    def enterPress(self):
+        self.entry_count = self.entry_count +1
+        user_input = []
+        if(self.entry_count>=len(self.entry_list)):
+            for i in self.entry_list:
+                user_input.append(i.text())
+            result = check_coordinates(50,500,user_input)
+            if(type(result)!=list):
+                self.main_label.setText("Please enter a valid number from 50 to 500")
+            elif(check_spacing(result,self.mode) ):
+                # go to the next page
+                print("go to schema display")
+            else:
+                self.main_label.setText("Enter the coordinates that are 30cm apart from one another")
+
+    def back(self):
+        self.hide()
+        main_window.schema_selection_window.display_y_schema()
+
+
+
 
 
 # create the application
