@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget, QVBoxLayout, \
     QLineEdit, QFormLayout
-from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator
+from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator, QTransform
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 import matlab.engine
+from PIL import Image, ImageTk
 import threading
 from functools import partial
 
@@ -188,17 +189,6 @@ class SchemaSelection(QMainWindow):
         print("going to z")
 
 
-
-    # putting the button in its place
-    # by using grid
-    # button1.grid(row=0, column=0, padx=0, pady=0)
-    # window_count = len(new_window.children)
-    # print("before entry page ",window_count)
-    # # # display the 3 different orientation
-    # Button(Frame, "Y Direction", lambda: get_coordinates(0, new_window,window_count), (60, 266), 1, 0, "y_direction.png", 20, 20)
-    # Button(Frame, "X Direction", lambda: get_coordinates(1, new_window,window_count), (300, 40), 1, 1, "x_direction.png", 35, 140)
-    # Button(Frame, "2 Dimension", lambda: get_coordinates(2, new_window,window_count), (106, 200), 1, 2, "2d_space.png", 30, 50)
-
 def check_coordinates(min_range,max_range,entry_list):
     try:
         temp = []
@@ -286,7 +276,7 @@ class Seat_Input(QMainWindow):
                 e1.editingFinished.connect(self.enterPress)
                 main_layout.addWidget(e1, i+2, 1,1,1,Qt.AlignCenter)
                 self.entry_list.append(e1)
-                
+
                 e2 = QLineEdit()
                 e2.setValidator(QIntValidator())
                 e2.editingFinished.connect(self.enterPress)
@@ -315,7 +305,10 @@ class Seat_Input(QMainWindow):
                 self.main_label.setText("Please enter a valid number from 50 to 500")
             elif(check_spacing(result,self.mode) ):
                 # go to the next page
-                print("go to schema display")
+                main_window.schema_selection_window.hide()
+                self.hide()
+                self.display_page = Schema_Page(self.mode,result)
+                self.display_page.show()
             else:
                 self.main_label.setText("Enter the coordinates that are 30cm apart from one another")
 
@@ -324,8 +317,75 @@ class Seat_Input(QMainWindow):
         main_window.schema_selection_window.display_y_schema()
 
 
+class Schema_Page(QMainWindow):
+
+    def __init__(self,mode,chair_coordinates):
+        super().__init__()
+
+        self.setWindowTitle("Seating Arrangement")
+
+        self.mode = mode
+        self.coordinates = chair_coordinates
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        main_layout = QGridLayout()
+        central_widget.setLayout(main_layout)
+
+        back_button = QPushButton("Back", self)
+        back_button.setFont(QFont('Arial', 10))
+        back_button.clicked.connect(self.back)
+        back_button.setContentsMargins(10, 10, 10, 10)
+        main_layout.addWidget(back_button, 0, 0, 1, 1, Qt.AlignCenter)
+
+        top_widget = QWidget()
+        top_frame = QGridLayout()
+        top_widget.setLayout(top_frame)
+        x_label = QLabel("Distance from the sensor in the X direction")
+        x_label.setFont(QFont("Arial",13))
+        top_frame.addWidget(x_label,0,6,1,1,Qt.AlignCenter)
+
+        pixmap = QPixmap("x_arrow.png")
+        pixmap = pixmap.scaled(500, 50)
+        label = QLabel()
+        label.setPixmap(pixmap)
+        top_frame.addWidget(label,1,6,1,1,Qt.AlignCenter)
+        main_layout.addWidget(top_widget,0,1,1,1,Qt.AlignCenter)
 
 
+        side_widget = QWidget()
+        side_frame = QGridLayout()
+        side_widget.setLayout(side_frame)
+        y_label = QLabel("Distance from the sensor in the Y direction")
+        y_label.setFont(QFont("Arial",13))
+        side_frame.addWidget(y_label,0,1,1,1,Qt.AlignCenter)
+        empty_label = QLabel()
+        side_frame.addWidget(empty_label, 1, 1, 1, 1, Qt.AlignCenter)
+        transform = QTransform()
+        transform.rotate(90)
+        rotated_pixmap = pixmap.transformed(transform)
+        y_label = QLabel()
+        y_label.setPixmap(rotated_pixmap)
+        side_frame.addWidget(y_label,6,1,1,1,Qt.AlignCenter)
+        main_layout.addWidget(side_widget,1,0,1,1,Qt.AlignCenter)
+
+
+
+        # side_frame = ttk.Frame(seat_window)
+        # y_arrow = Image.open("y_arrow.png")
+        # y_arrow = y_arrow.resize((50, 500))
+        # y_arrow = ImageTk.PhotoImage(y_arrow)
+        # y_arrow_label = ttk.Label(side_frame, image=y_arrow)
+        # y_arrow_label.image = y_arrow
+        # y_arrow_label.grid(row=6, column=1)
+        # y_label = ttk.Label(side_frame, text="Distance from the sensor in the Y direction")
+        # y_label.grid(row=0, column=1)
+        # side_frame.grid(row=1, column=0)
+
+
+    def back(self):
+        self.hide()
+        main_window.schema_selection_window.show()
 
 # create the application
 app = QApplication([])
