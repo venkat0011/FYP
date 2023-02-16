@@ -1,14 +1,15 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget, QVBoxLayout, \
-    QLineEdit, QFormLayout
-from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator, QTransform
+    QLineEdit, QFormLayout, QDesktopWidget, QHBoxLayout
+from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator, QTransform, QBrush, QColor
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 import matlab.engine
+import numpy as np
 from PIL import Image, ImageTk
 import threading
 from functools import partial
 
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtGui
 
 
 class MatlabThread(QtCore.QThread):
@@ -328,64 +329,105 @@ class Schema_Page(QMainWindow):
         self.coordinates = chair_coordinates
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-
+        self.canvas = []
         main_layout = QGridLayout()
         central_widget.setLayout(main_layout)
+        main_layout.setSpacing(10)
 
         back_button = QPushButton("Back", self)
         back_button.setFont(QFont('Arial', 10))
         back_button.clicked.connect(self.back)
         back_button.setContentsMargins(10, 10, 10, 10)
-        main_layout.addWidget(back_button, 0, 0, 1, 1, Qt.AlignCenter)
+        main_layout.addWidget(back_button, 0, 0, 1, 1, Qt.AlignLeft)
 
+        #top frame
         top_widget = QWidget()
         top_frame = QGridLayout()
         top_widget.setLayout(top_frame)
         x_label = QLabel("Distance from the sensor in the X direction")
         x_label.setFont(QFont("Arial",13))
-        top_frame.addWidget(x_label,0,6,1,1,Qt.AlignCenter)
+        top_frame.addWidget(x_label,0,1,1,1,Qt.AlignCenter)
 
         pixmap = QPixmap("x_arrow.png")
         pixmap = pixmap.scaled(500, 50)
         label = QLabel()
         label.setPixmap(pixmap)
-        top_frame.addWidget(label,1,6,1,1,Qt.AlignCenter)
+        top_frame.addWidget(label,1,1,1,1,Qt.AlignCenter)
         main_layout.addWidget(top_widget,0,1,1,1,Qt.AlignCenter)
 
-
+        #side frame
         side_widget = QWidget()
         side_frame = QGridLayout()
         side_widget.setLayout(side_frame)
         y_label = QLabel("Distance from the sensor in the Y direction")
         y_label.setFont(QFont("Arial",13))
         side_frame.addWidget(y_label,0,1,1,1,Qt.AlignCenter)
-        empty_label = QLabel()
-        side_frame.addWidget(empty_label, 1, 1, 1, 1, Qt.AlignCenter)
         transform = QTransform()
         transform.rotate(90)
         rotated_pixmap = pixmap.transformed(transform)
         y_label = QLabel()
         y_label.setPixmap(rotated_pixmap)
-        side_frame.addWidget(y_label,6,1,1,1,Qt.AlignCenter)
-        main_layout.addWidget(side_widget,1,0,1,1,Qt.AlignCenter)
+        side_frame.addWidget(y_label,1,1,1,1,Qt.AlignCenter)
+        main_layout.addWidget(side_widget,1,0,1,1,Qt.AlignLeft)
+
+        #side frame
+        rightSide = QWidget()
+        rightFrame = QGridLayout()
+        rightSide.setLayout(rightFrame)
+
+        start_button = QPushButton("start", self)
+        start_button.setFont(QFont('Arial', 10))
+        start_button.clicked.connect(self.start)
+        start_button.setContentsMargins(10, 10, 10, 10)
+        rightFrame.addWidget(start_button, 0, 0, 1, 1, Qt.AlignLeft)
+        main_layout.addWidget(rightSide,1,2,1,1,Qt.AlignRight)
+
+        seat_widget = QWidget()
+        seat_frame = QGridLayout()
+        seat_widget.setLayout(seat_frame)
+        main_layout.addWidget(seat_widget, 1, 1, 1, 1, Qt.AlignLeft)
 
 
 
-        # side_frame = ttk.Frame(seat_window)
-        # y_arrow = Image.open("y_arrow.png")
-        # y_arrow = y_arrow.resize((50, 500))
-        # y_arrow = ImageTk.PhotoImage(y_arrow)
-        # y_arrow_label = ttk.Label(side_frame, image=y_arrow)
-        # y_arrow_label.image = y_arrow
-        # y_arrow_label.grid(row=6, column=1)
-        # y_label = ttk.Label(side_frame, text="Distance from the sensor in the Y direction")
-        # y_label.grid(row=0, column=1)
-        # side_frame.grid(row=1, column=0)
+        if(mode!=2):
+            seat_coordinates = sorted(self.coordinates)
+            temp_coordinates = np.divide(seat_coordinates, 50) - 1
+            temp_coordinates = temp_coordinates.tolist()
+            temp_coordinates = [round(i) for i in temp_coordinates]
+            print(temp_coordinates)
+
+            if(mode):
+                pass
+            else:
+                top_widget.deleteLater()
+                for r in range(10):
+                    label = QLabel(str((r + 1) * 50))
+                    seat_frame.addWidget(label, r+3,0,1,1,Qt.AlignCenter)
+                    scene = QtWidgets.QGraphicsScene()
+                    view = QtWidgets.QGraphicsView(scene)
+                    view.setFixedSize(105,55)
+                    rect = scene.addRect(0, 0, 100,  50)
+                    pen = QtGui.QPen(QtCore.Qt.black)
+                    brush = QtGui.QBrush(QtCore.Qt.gray)
+                    if(r in temp_coordinates):
+                        brush.setColor(QtCore.Qt.darkGreen)
+                        self.canvas.append(rect)
+
+                    rect.setPen(pen)
+                    rect.setBrush(brush)
+                    seat_frame.addWidget(view, r+3, 1, 1, 1, Qt.AlignCenter)
+
+
+
 
 
     def back(self):
         self.hide()
         main_window.schema_selection_window.show()
+    def start(self):
+        for i in self.canvas:
+            brush = QtGui.QBrush(QtCore.Qt.red)
+            i.setBrush(brush)
 
 # create the application
 app = QApplication([])
