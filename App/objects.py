@@ -114,7 +114,7 @@ class SchemaSelection(QMainWindow):
         button_icon = QIcon(pixmap)
         y_button.setIcon(button_icon)
         y_button.setIconSize(QSize(60, 266))
-        y_button.clicked.connect(self.display_y_schema)
+        y_button.clicked.connect(lambda : self.display_schema(0))
         main_layout.addWidget(y_button, 1, 0, 1, 1, Qt.AlignCenter)
 
         # label for the button
@@ -131,7 +131,7 @@ class SchemaSelection(QMainWindow):
         button_icon = QIcon(pixmap)
         x_button.setIcon(button_icon)
         x_button.setIconSize(QSize(300, 40))
-        x_button.clicked.connect(self.display_x_schema)
+        x_button.clicked.connect(lambda : self.display_schema(1))
         vlayout.addWidget(x_button)
         # label for the button
         x_label = QLabel("X Direction", self)
@@ -148,7 +148,7 @@ class SchemaSelection(QMainWindow):
         button_icon = QIcon(pixmap)
         z_button.setIcon(button_icon)
         z_button.setIconSize(QSize(150, 150))
-        z_button.clicked.connect(self.display_z_schema)
+        z_button.clicked.connect(lambda : self.display_schema(2))
         vlayout.addWidget(z_button)
 
         # label for the button
@@ -163,7 +163,7 @@ class SchemaSelection(QMainWindow):
         main_window.show()
         self.hide()
 
-    def display_y_schema(self):
+    def display_schema(self,mode):
         flag = False
         count = 0
         while(not flag):
@@ -182,12 +182,8 @@ class SchemaSelection(QMainWindow):
                 break
         if(flag):
             no_of_chair = int(no_of_chair[0])
-            self.user_input = Seat_Input(0,no_of_chair)
+            self.user_input = Seat_Input(mode,no_of_chair)
             self.user_input.show()
-    def display_x_schema(self):
-        print("going to x")
-    def display_z_schema(self):
-        print("going to z")
 
 
 def check_coordinates(min_range,max_range,entry_list):
@@ -379,7 +375,7 @@ class Schema_Page(QMainWindow):
         start_button.setFont(QFont('Arial', 10))
         start_button.clicked.connect(self.start)
         start_button.setContentsMargins(10, 10, 10, 10)
-        rightFrame.addWidget(start_button, 0, 0, 1, 1, Qt.AlignLeft)
+        rightFrame.addWidget(start_button, 0, 0, 1, 1, Qt.AlignCenter)
         main_layout.addWidget(rightSide,1,2,1,1,Qt.AlignRight)
 
         seat_widget = QWidget()
@@ -387,7 +383,10 @@ class Schema_Page(QMainWindow):
         seat_widget.setLayout(seat_frame)
         main_layout.addWidget(seat_widget, 1, 1, 1, 1, Qt.AlignLeft)
 
-
+        desktop = QDesktopWidget()
+        screen_size = desktop.screenGeometry(0).size()
+        screen_width = screen_size.width()
+        screen_height = screen_size.height()
 
         if(mode!=2):
             seat_coordinates = sorted(self.coordinates)
@@ -397,8 +396,33 @@ class Schema_Page(QMainWindow):
             print(temp_coordinates)
 
             if(mode):
-                pass
+                self.setFixedSize(screen_width / (1366 / 1200), screen_height / (768 / 250))
+                side_widget.deleteLater()
+                for r in range(10):
+                    vertical_layout = QVBoxLayout()
+                    vertical_widget = QWidget()
+                    vertical_widget.setLayout(vertical_layout)
+                    label = QLabel(str((r + 1) * 50))
+                    vertical_layout.addWidget(label)
+                    scene = QtWidgets.QGraphicsScene()
+                    view = QtWidgets.QGraphicsView(scene)
+                    view.setFixedSize(105,55)
+                    rect = scene.addRect(0, 0, 100,  50)
+                    pen = QtGui.QPen(QtCore.Qt.black)
+                    brush = QtGui.QBrush(QtCore.Qt.gray)
+                    if(r in temp_coordinates):
+                        brush.setColor(QtCore.Qt.darkGreen)
+                        self.canvas.append(rect)
+
+                    rect.setPen(pen)
+                    rect.setBrush(brush)
+                    vertical_layout.addWidget(view)
+                    seat_frame.addWidget(vertical_widget,0,r+1,1,1,Qt.AlignTop)
             else:
+                # the laptop used have a resolution of 1366 768
+                # so if 1366 is mapped to 500 and 768 is mapped to 650
+
+                self.setFixedSize(screen_width / ( 1366/500), screen_height/(768/650))
                 top_widget.deleteLater()
                 for r in range(10):
                     label = QLabel(str((r + 1) * 50))
