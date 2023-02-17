@@ -277,7 +277,7 @@ class Seat_Input(QMainWindow):
                 e2 = QLineEdit()
                 e2.setValidator(QIntValidator())
                 e2.editingFinished.connect(self.enterPress)
-                main_layout.addWidget(e1, i+2, 2,1,1,Qt.AlignCenter)
+                main_layout.addWidget(e2, i+2, 2,1,1,Qt.AlignCenter)
                 self.entry_list.append(e2)
 
 
@@ -440,6 +440,58 @@ class Schema_Page(QMainWindow):
                     rect.setPen(pen)
                     rect.setBrush(brush)
                     seat_frame.addWidget(view, r+3, 1, 1, 1, Qt.AlignCenter)
+
+        else:
+            # self.setFixedSize(1000, 700)
+            x_coordinates = self.coordinates[0::2]
+            y_coordinates = self.coordinates[1::2]
+            seat_coordinates = []
+            for i in range(len(self.coordinates) // 2):
+                seat_coordinates.append([x_coordinates[i], y_coordinates[i]])
+            seat_coordinates = sorted(seat_coordinates)
+            temp_coordinates = np.divide(seat_coordinates, 50) - 1
+            temp_coordinates = temp_coordinates.tolist()
+            temp_coordinates = [[round(j) for j in i] for i in temp_coordinates]
+            for c in range(10):
+                label = QLabel(str((c + 1) * 50))
+                seat_frame.addWidget(label,  2, c+1, 1, 1, Qt.AlignCenter)
+            for r in range(10):
+                label = QLabel(str((r+1) *50))
+                seat_frame.addWidget(label,r+3,0)
+
+                for c in range(10):
+                    scene = QtWidgets.QGraphicsScene()
+                    view = QtWidgets.QGraphicsView(scene)
+                    view.setFixedSize(75, 55)
+                    rect = scene.addRect(0, 0, 70, 50)
+                    pen = QtGui.QPen(QtCore.Qt.black)
+                    brush = QtGui.QBrush(QtCore.Qt.gray)
+                    if ([r, c] in temp_coordinates):
+                        brush.setColor(QtCore.Qt.darkGreen)
+                        self.canvas.append(rect)
+
+                    rect.setPen(pen)
+                    rect.setBrush(brush)
+                    seat_frame.addWidget(view, r + 3, c+1, 1, 1, Qt.AlignCenter)
+
+                # for c in range(10):
+                #     l = tk.Label(seat_frame, text=str((c+1) * 50))
+                #     l.grid(row=2, column=c + 1,pady=10)
+                # for r in range(10):
+                #     l = tk.Label(seat_frame, text=str((r+1) * 50))
+                #     l.grid(row=r + 3, column=0)
+                #     for c in range(10):
+                #         Frame = tk.Frame(seat_frame, width=75, height=50)  # 5 chars
+                #         w = tk.Canvas(Frame, width=75, height=50)
+                #         # find the seats based on the seat array -> store these canvas in an array so we can change the colour later on
+                #         if([r,c] in temp_coordinates):
+                #             fill = "green"
+                #             seat_canvas.append(w)
+                #         else:
+                #             fill = "grey"
+                #         w.create_rectangle(0, 0, 75, 50, fill=fill)
+                #         w.pack()
+                #         Frame.grid(row=r + 3, column=c + 1)
 
 
 
