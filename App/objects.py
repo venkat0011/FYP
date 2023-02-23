@@ -8,12 +8,16 @@ import numpy as np
 from PIL import Image, ImageTk
 import threading
 from functools import partial
-
+import paramiko
 from qtpy import QtWidgets, QtGui
-
+import time
+import os
+x_sensor_ip = "155.69.148.187" # the one with the name CNCL sticker on the sensor
+y_sensor_ip = "155.69.149.225" # the one with the name demo
 
 class MatlabThread(QtCore.QThread):
     matlab_start_signal = QtCore.pyqtSignal()
+    stop_event = threading.Event()
     engine = None
     def run(self):
         # Start Matlab engine here
@@ -83,7 +87,6 @@ class MainWindow(QMainWindow):
 class SchemaSelection(QMainWindow):
     def __init__(self):
         super().__init__()
-
         # set the title
         self.setWindowTitle("IR-UWB")
 
@@ -313,6 +316,47 @@ class Seat_Input(QMainWindow):
         self.hide()
         main_window.schema_selection_window.display_y_schema()
 
+def start_sensor(stop_event: threading.Event, shell, label, seat_coordinates, file_path):
+    label.setText( "Running RADAR and MATLAB CODE");
+    shell.send("cd testing_realtime/ \n")
+    while not shell.recv_ready():
+        pass
+    while not stop_event.is_set():
+        start_time = time.time()
+        shell.send("./Runme \n")
+        print("checking if it is done")
+        while (1):
+            output = shell.recv(1024)
+            output_str = output.decode()
+            if ("done" in output_str):
+                print(output_str)
+                break
+        time.sleep(0.5)
+        state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
+        print("time taken",time.time()-start_time)
+        os.remove(file_path)
+        print(state)
+        # if (queue is None):
+        #     for i in range(len(seat_coordinates)):
+        #         #     # this will give us the number of seat, and we can access the relevant frame
+        #         if (state[i][-1] == 2):
+        #             seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="red")
+        #         else:
+        #             seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="green")
+        #     print("time taken", time.time() - start_time)
+        # else:
+        #     queue.put(state)
+
+class Running_Radar(QtCore.QThread):
+    def __init__(self, shell, label,coordinates,file_path):
+        super().__init__()
+        self.shell = shell
+        self.label = label
+        self.coordinates = coordinates
+        self.file_path=  file_path
+    def run(self):
+        start_sensor(main_window.matlab_thread.stop_event,self.shell,self.label,
+                              self.coordinates,self.file_path)
 
 class Schema_Page(QMainWindow):
 
@@ -368,15 +412,18 @@ class Schema_Page(QMainWindow):
 
         #side frame
         rightSide = QWidget()
-        rightFrame = QGridLayout()
-        rightSide.setLayout(rightFrame)
+        self.rightFrame = QGridLayout()
+        rightSide.setLayout(self.rightFrame)
 
-        start_button = QPushButton("start", self)
+        self.start_label = QLabel("Press Start to Begin")
+        self.start_label.setFont(QFont("Arial",9))
+        self.rightFrame.addWidget(self.start_label,0,0,1,1,Qt.AlignCenter)
+        start_button = QPushButton("Start", self)
         start_button.setFont(QFont('Arial', 10))
         start_button.clicked.connect(self.start)
         start_button.setContentsMargins(10, 10, 10, 10)
-        rightFrame.addWidget(start_button, 0, 0, 1, 1, Qt.AlignCenter)
-        main_layout.addWidget(rightSide,1,2,1,1,Qt.AlignRight)
+        self.rightFrame.addWidget(start_button, 1, 0, 1, 1, Qt.AlignCenter)
+        main_layout.addWidget(rightSide,1,2,1,1,Qt.AlignCenter)
 
         seat_widget = QWidget()
         seat_frame = QGridLayout()
@@ -422,7 +469,7 @@ class Schema_Page(QMainWindow):
                 # the laptop used have a resolution of 1366 768
                 # so if 1366 is mapped to 500 and 768 is mapped to 650
 
-                self.setFixedSize(screen_width / ( 1366/500), screen_height/(768/650))
+                self.setFixedSize(screen_width / ( 1366/700), screen_height/(768/680))
                 top_widget.deleteLater()
                 for r in range(10):
                     label = QLabel(str((r + 1) * 50))
@@ -474,24 +521,6 @@ class Schema_Page(QMainWindow):
                     rect.setBrush(brush)
                     seat_frame.addWidget(view, r + 3, c+1, 1, 1, Qt.AlignCenter)
 
-                # for c in range(10):
-                #     l = tk.Label(seat_frame, text=str((c+1) * 50))
-                #     l.grid(row=2, column=c + 1,pady=10)
-                # for r in range(10):
-                #     l = tk.Label(seat_frame, text=str((r+1) * 50))
-                #     l.grid(row=r + 3, column=0)
-                #     for c in range(10):
-                #         Frame = tk.Frame(seat_frame, width=75, height=50)  # 5 chars
-                #         w = tk.Canvas(Frame, width=75, height=50)
-                #         # find the seats based on the seat array -> store these canvas in an array so we can change the colour later on
-                #         if([r,c] in temp_coordinates):
-                #             fill = "green"
-                #             seat_canvas.append(w)
-                #         else:
-                #             fill = "grey"
-                #         w.create_rectangle(0, 0, 75, 50, fill=fill)
-                #         w.pack()
-                #         Frame.grid(row=r + 3, column=c + 1)
 
 
 
@@ -501,9 +530,42 @@ class Schema_Page(QMainWindow):
         self.hide()
         main_window.schema_selection_window.show()
     def start(self):
-        for i in self.canvas:
-            brush = QtGui.QBrush(QtCore.Qt.red)
-            i.setBrush(brush)
+        main_window.matlab_thread.stop_event.clear()
+        self.start_label.setText("SSH into RPI")
+        stop_button = QPushButton("Stop", self)
+        stop_button.setFont(QFont('Arial', 10))
+        stop_button.clicked.connect(self.stop)
+        stop_button.setContentsMargins(10, 10, 10, 10)
+        self.rightFrame.addWidget(stop_button, 1, 0, 1, 1, Qt.AlignCenter)
+        QApplication.processEvents() # Force GUI to update
+        if(self.mode!=2):
+            print("executing this first ")
+            ssh_x = paramiko.SSHClient()
+            ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
+            channel = ssh_x.invoke_shell()
+            radar_thread = Running_Radar(channel,self.start_label,self.coordinates,"z:/radar_x.csv")
+            radar_thread.start()
+            radar_thread.wait()
+
+
+    def stop(self):
+        main_window.matlab_thread.stop_event.set()
+        self.start_label.setText("Press Start to begin")
+        start_button = QPushButton("Start", self)
+        start_button.setFont(QFont('Arial', 10))
+        start_button.clicked.connect(self.start)
+        start_button.setContentsMargins(10, 10, 10, 10)
+        self.rightFrame.addWidget(start_button, 1, 0, 1, 1, Qt.AlignCenter)
+        QApplication.processEvents() # Force GUI to update
+        print("Stopping")
+    def display_states(self):
+        pass
+
+
+        # for i in self.canvas:
+        #     brush = QtGui.QBrush(QtCore.Qt.red)
+        #     i.setBrush(brush)
 
 # create the application
 app = QApplication([])

@@ -58,8 +58,8 @@ detector = phased.CFARDetector('Method','CA',...
 Z_detect = detector(Z,1:141);
 Z_detect = Z_detect .' ;
 detected_signal = Z_detect .* envelope_clean_signal ;
-% figure;
-% imagesc(detected_signal);
+figure;
+imagesc(detected_signal);
 
 %% need to fill up the detection 
 % for each sample find the locations of the peak -> if the next sample does
