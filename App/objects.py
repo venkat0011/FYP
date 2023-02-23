@@ -1,3 +1,5 @@
+from queue import Queue
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QGridLayout, QWidget, QVBoxLayout, \
     QLineEdit, QFormLayout, QDesktopWidget, QHBoxLayout
 from PyQt5.QtGui import QFont, QPixmap, QIcon, QIntValidator, QTransform, QBrush, QColor
@@ -316,26 +318,24 @@ class Seat_Input(QMainWindow):
         self.hide()
         main_window.schema_selection_window.display_y_schema()
 
-def start_sensor(stop_event: threading.Event, shell, label, seat_coordinates, file_path):
-    label.setText( "Running RADAR and MATLAB CODE");
-    shell.send("cd testing_realtime/ \n")
-    while not shell.recv_ready():
-        pass
-    while not stop_event.is_set():
-        start_time = time.time()
-        shell.send("./Runme \n")
-        print("checking if it is done")
-        while (1):
-            output = shell.recv(1024)
-            output_str = output.decode()
-            if ("done" in output_str):
-                print(output_str)
-                break
-        time.sleep(0.5)
-        state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
-        print("time taken",time.time()-start_time)
-        os.remove(file_path)
-        print(state)
+def start_sensor(shell, seat_coordinates, file_path,queue):
+    print("Running start sensor")
+    start_time = time.time()
+    # shell.send("./Runme \n")
+    # print("checking if it is done")
+    # while (1):
+    #     output = shell.recv(1024)
+    #     output_str = output.decode()
+    #     if ("done" in output_str):
+    #         print(output_str)
+    #         break
+    time.sleep(0.5)
+
+    state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
+    queue.put(state)
+    print("time taken",time.time()-start_time)
+    # os.remove(file_path)
+    print(state)
         # if (queue is None):
         #     for i in range(len(seat_coordinates)):
         #         #     # this will give us the number of seat, and we can access the relevant frame
@@ -348,18 +348,51 @@ def start_sensor(stop_event: threading.Event, shell, label, seat_coordinates, fi
         #     queue.put(state)
 
 class Running_Radar(QtCore.QThread):
-    def __init__(self, shell, label,coordinates,file_path):
+    def __init__(self, shell,coordinates,file_path,queue):
         super().__init__()
         self.shell = shell
-        self.label = label
         self.coordinates = coordinates
         self.file_path=  file_path
+        self.queue = queue
     def run(self):
-        start_sensor(main_window.matlab_thread.stop_event,self.shell,self.label,
-                              self.coordinates,self.file_path)
+        print("going to run start sensor")
+        start_sensor(self.shell,self.coordinates,self.file_path,self.queue)
+
+class Radar_Main_Thread(QtCore.QThread):
+    def __init__(self,channel_list,seat_coordinate,file_path_list,stop_event: threading.Event,queue,canvas):
+        super().__init__()
+        self.channel_list = channel_list
+        self.coordinates = seat_coordinate
+        self.paths = file_path_list
+        self.event = stop_event
+        self.queue = queue
+        self.canvas = canvas
+    def run(self):
+        # this will act as the main running thread which will create the thread to run a single instance
+        # before we create thread to run the radar we need to change the pwd
+        # for i in self.channel_list:
+        #     i.send("cd testing_realtime/ \n")
+        #     while not i.recv_ready():
+        #         pass
+        # now all the channels are prepped and ready to start the radar
+        while not self.event.is_set():
+            if(len(self.channel_list)==1):
+                # create a single instance of a thread to run the code
+                print("entering while loop for thread creation")
+                radar_thread = Running_Radar(self.channel_list[0],self.coordinates,self.paths[0],self.queue)
+                radar_thread.start()
+                # after this one instance of the thread has completed so we can call the display function
+                # to display the states
+                radar_thread.wait()
+                display_states(self.queue,self.coordinates,self.canvas)
+
+
+            else:
+                pass
+
+
 
 class Schema_Page(QMainWindow):
-
     def __init__(self,mode,chair_coordinates):
         super().__init__()
 
@@ -370,6 +403,7 @@ class Schema_Page(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         self.canvas = []
+        self.queue = Queue()
         main_layout = QGridLayout()
         central_widget.setLayout(main_layout)
         main_layout.setSpacing(10)
@@ -521,11 +555,6 @@ class Schema_Page(QMainWindow):
                     rect.setBrush(brush)
                     seat_frame.addWidget(view, r + 3, c+1, 1, 1, Qt.AlignCenter)
 
-
-
-
-
-
     def back(self):
         self.hide()
         main_window.schema_selection_window.show()
@@ -539,14 +568,16 @@ class Schema_Page(QMainWindow):
         self.rightFrame.addWidget(stop_button, 1, 0, 1, 1, Qt.AlignCenter)
         QApplication.processEvents() # Force GUI to update
         if(self.mode!=2):
-            print("executing this first ")
-            ssh_x = paramiko.SSHClient()
-            ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
-            channel = ssh_x.invoke_shell()
-            radar_thread = Running_Radar(channel,self.start_label,self.coordinates,"z:/radar_x.csv")
+            # ssh_x = paramiko.SSHClient()
+            # ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            # ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
+            # channel = ssh_x.invoke_shell()
+            channel = None
+            self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
+            radar_thread = Radar_Main_Thread([channel],self.coordinates,["D:/Users/venkat/Desktop/computer engineering/FINAL YEAR PROJECT"+
+                                                                         "/Source Codes/ir-uwb/radar_x.csv"],
+                                             main_window.matlab_thread.stop_event,self.queue,self.canvas)
             radar_thread.start()
-            radar_thread.wait()
 
 
     def stop(self):
@@ -559,13 +590,19 @@ class Schema_Page(QMainWindow):
         self.rightFrame.addWidget(start_button, 1, 0, 1, 1, Qt.AlignCenter)
         QApplication.processEvents() # Force GUI to update
         print("Stopping")
-    def display_states(self):
-        pass
 
+def display_states(queue,coordinates,canvas):
+    state = queue.get()
+    for i in range(len(coordinates)):
+            #     # this will give us the number of seat, and we can access the relevant frame
+        if (state[i][-1] == 2):
+            brush = QtGui.QBrush(QtCore.Qt.red)
+            canvas[i].setBrush(brush)
+        else:
+            brush = QtGui.QBrush(QtCore.Qt.green)
+            canvas[i].setBrush(brush)
+    queue.queue.clear()
 
-        # for i in self.canvas:
-        #     brush = QtGui.QBrush(QtCore.Qt.red)
-        #     i.setBrush(brush)
 
 # create the application
 app = QApplication([])
