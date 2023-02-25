@@ -26,18 +26,18 @@
 
 
 
-% state = sample( [50]);
+state = sample( [50]);
 
-n = (-10:1:10)';
-unitstep = n<=0;
-newunitstep = n<=1;
-impulse = n==0;
-new_impulse = n==1;
-x =  (3.^n .*newunitstep) ;
-TA_signal = impulse - ( -1 .* x);
-proposed_signal = (-3 .* new_impulse) - (-1 .*x) ; 
-subplot(3,1,1);stem(n,3.^n .* unitstep);axis on; title("3^n u[-n]");
-% subplot(4,1,2);stem(n,x);axis on; title("3^n u[-n-1]");
-subplot(3,1,2);stem(n,TA_signal);axis on; title("TA's Signal");
-subplot(3,1,3);stem(n,proposed_signal);axis on; title("Proposed signal");
-% stem(n,3.^n .* unitstep);
+% n = (-10:1:10)';
+% unitstep = n<=0;
+% newunitstep = n<=1;
+% impulse = n==0;
+% new_impulse = n==1;
+% x =  (3.^n .*newunitstep) ;
+% TA_signal = impulse - ( -1 .* x);
+% proposed_signal = (-3 .* new_impulse) - (-1 .*x) ; 
+% subplot(3,1,1);stem(n,3.^n .* unitstep);axis on; title("3^n u[-n]");
+% % subplot(4,1,2);stem(n,x);axis on; title("3^n u[-n-1]");
+% subplot(3,1,2);stem(n,TA_signal);axis on; title("TA's Signal");
+% subplot(3,1,3);stem(n,proposed_signal);axis on; title("Proposed signal");
+% % stem(n,3.^n .* unitstep);

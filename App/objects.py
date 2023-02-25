@@ -316,36 +316,26 @@ class Seat_Input(QMainWindow):
 
     def back(self):
         self.hide()
-        main_window.schema_selection_window.display_y_schema()
+        main_window.schema_selection_window.display_schema(self.mode)
 
 def start_sensor(shell, seat_coordinates, file_path,queue):
     print("Running start sensor")
     start_time = time.time()
-    # shell.send("./Runme \n")
-    # print("checking if it is done")
-    # while (1):
-    #     output = shell.recv(1024)
-    #     output_str = output.decode()
-    #     if ("done" in output_str):
-    #         print(output_str)
-    #         break
-    time.sleep(0.5)
-
-    state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
-    queue.put(state)
-    print("time taken",time.time()-start_time)
-    # os.remove(file_path)
-    print(state)
-        # if (queue is None):
-        #     for i in range(len(seat_coordinates)):
-        #         #     # this will give us the number of seat, and we can access the relevant frame
-        #         if (state[i][-1] == 2):
-        #             seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="red")
-        #         else:
-        #             seat_canvas[i].create_rectangle(0, 0, 100, 100, fill="green")
-        #     print("time taken", time.time() - start_time)
-        # else:
-        #     queue.put(state)
+    shell.send("./Runme \n")
+    print("checking if it is done")
+    while (1):
+        output = shell.recv(1024)
+        output_str = output.decode()
+        if ("done" in output_str):
+            break
+    time.sleep(1)
+    try:
+        state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
+        queue.put(state)
+        print("time taken",time.time()-start_time)
+        os.remove(file_path)
+    except:
+        pass
 
 class Running_Radar(QtCore.QThread):
     def __init__(self, shell,coordinates,file_path,queue):
@@ -370,10 +360,10 @@ class Radar_Main_Thread(QtCore.QThread):
     def run(self):
         # this will act as the main running thread which will create the thread to run a single instance
         # before we create thread to run the radar we need to change the pwd
-        # for i in self.channel_list:
-        #     i.send("cd testing_realtime/ \n")
-        #     while not i.recv_ready():
-        #         pass
+        for i in self.channel_list:
+            i.send("cd testing_realtime/ \n")
+            while not i.recv_ready():
+                pass
         # now all the channels are prepped and ready to start the radar
         while not self.event.is_set():
             if(len(self.channel_list)==1):
@@ -568,14 +558,12 @@ class Schema_Page(QMainWindow):
         self.rightFrame.addWidget(stop_button, 1, 0, 1, 1, Qt.AlignCenter)
         QApplication.processEvents() # Force GUI to update
         if(self.mode!=2):
-            # ssh_x = paramiko.SSHClient()
-            # ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
-            # channel = ssh_x.invoke_shell()
-            channel = None
+            ssh_x = paramiko.SSHClient()
+            ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
+            channel = ssh_x.invoke_shell()
             self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
-            radar_thread = Radar_Main_Thread([channel],self.coordinates,["D:/Users/venkat/Desktop/computer engineering/FINAL YEAR PROJECT"+
-                                                                         "/Source Codes/ir-uwb/radar_x.csv"],
+            radar_thread = Radar_Main_Thread([channel],self.coordinates,["z:/radar_x.csv"],
                                              main_window.matlab_thread.stop_event,self.queue,self.canvas)
             radar_thread.start()
 
@@ -599,7 +587,7 @@ def display_states(queue,coordinates,canvas):
             brush = QtGui.QBrush(QtCore.Qt.red)
             canvas[i].setBrush(brush)
         else:
-            brush = QtGui.QBrush(QtCore.Qt.green)
+            brush = QtGui.QBrush(QtCore.Qt.darkGreen)
             canvas[i].setBrush(brush)
     queue.queue.clear()
 

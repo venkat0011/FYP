@@ -1,9 +1,9 @@
 % this will be the offical script 
 %% Reading the CSV File
-function likelystates = IR_UWB_function(file_path,seat_location)
-close all
-try
-tic
+% function likelystates = sample(seat_location)
+% close all
+% try
+% tic
 data =  csvread('z:\radar_x.csv'); % later change this location so it can get the right excel from the rpi
 %% Converting the file into complex numbers
 recieved_signal = data(:,1:141) +1j*data(:,142:end);
@@ -193,7 +193,7 @@ end
 %         locations(i,1) = b * 5;
 %         temp_array1(b-5:b+5) = 0;
 %     end
-toc
-catch 
-end
-end
+% toc
+% catch 
+% end
+% end
