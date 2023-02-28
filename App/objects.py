@@ -318,7 +318,7 @@ class Seat_Input(QMainWindow):
         self.hide()
         main_window.schema_selection_window.display_schema(self.mode)
 
-def start_sensor(shell, seat_coordinates, file_path,queue):
+def start_sensor(shell, seat_coordinates, file_path,array):
     print("Running start sensor")
     start_time = time.time()
     shell.send("./Runme \n")
@@ -331,7 +331,8 @@ def start_sensor(shell, seat_coordinates, file_path,queue):
     time.sleep(1)
     try:
         state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
-        queue.put(state)
+        print("matlab state",state)
+        array.append(state)
         print("time taken",time.time()-start_time)
         os.remove(file_path)
     except:
@@ -349,13 +350,12 @@ class Running_Radar(QtCore.QThread):
         start_sensor(self.shell,self.coordinates,self.file_path,self.queue)
 
 class Radar_Main_Thread(QtCore.QThread):
-    def __init__(self,channel_list,seat_coordinate,file_path_list,stop_event: threading.Event,queue,canvas):
+    def __init__(self,channel_list,seat_coordinate,file_path_list,stop_event: threading.Event,canvas):
         super().__init__()
         self.channel_list = channel_list
         self.coordinates = seat_coordinate
         self.paths = file_path_list
         self.event = stop_event
-        self.queue = queue
         self.canvas = canvas
     def run(self):
         # this will act as the main running thread which will create the thread to run a single instance
@@ -369,15 +369,27 @@ class Radar_Main_Thread(QtCore.QThread):
             if(len(self.channel_list)==1):
                 # create a single instance of a thread to run the code
                 print("entering while loop for thread creation")
-                radar_thread = Running_Radar(self.channel_list[0],self.coordinates,self.paths[0],self.queue)
+                state_array =[]
+                radar_thread = Running_Radar(self.channel_list[0],self.coordinates,self.paths[0],state_array)
                 radar_thread.start()
                 # after this one instance of the thread has completed so we can call the display function
                 # to display the states
                 radar_thread.wait()
-                display_states(self.queue,self.coordinates,self.canvas)
-
-
+                display_states([state_array],self.coordinates,self.canvas)
             else:
+                x_coordinates = self.coordinates[0::2]
+                y_coordinates = self.coordinates[1::2]
+                x_state = []
+                y_state = []
+                radar_thread_x = Running_Radar(self.channel_list[0],x_coordinates,self.paths[0],x_state)
+                radar_thread_y = Running_Radar(self.channel_list[1], y_coordinates, self.paths[1], y_state)
+                radar_thread_x.start()
+                radar_thread_y.start()
+                # after this one instance of the thread has completed so we can call the display function
+                # to display the states
+                radar_thread_x.wait()
+                radar_thread_y.wait()
+                display_states([x_state,y_state],self.coordinates,self.canvas)
                 pass
 
 
@@ -461,6 +473,7 @@ class Schema_Page(QMainWindow):
 
         if(mode!=2):
             seat_coordinates = sorted(self.coordinates)
+            self.coordinates = seat_coordinates
             temp_coordinates = np.divide(seat_coordinates, 50) - 1
             temp_coordinates = temp_coordinates.tolist()
             temp_coordinates = [round(i) for i in temp_coordinates]
@@ -520,6 +533,7 @@ class Schema_Page(QMainWindow):
             for i in range(len(self.coordinates) // 2):
                 seat_coordinates.append([x_coordinates[i], y_coordinates[i]])
             seat_coordinates = sorted(seat_coordinates)
+            self.coordinates = seat_coordinates
             temp_coordinates = np.divide(seat_coordinates, 50) - 1
             temp_coordinates = temp_coordinates.tolist()
             temp_coordinates = [[round(j) for j in i] for i in temp_coordinates]
@@ -564,9 +578,24 @@ class Schema_Page(QMainWindow):
             channel = ssh_x.invoke_shell()
             self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
             radar_thread = Radar_Main_Thread([channel],self.coordinates,["z:/radar_x.csv"],
-                                             main_window.matlab_thread.stop_event,self.queue,self.canvas)
+                                             main_window.matlab_thread.stop_event,self.canvas)
             radar_thread.start()
+        else:
+            ssh_x = paramiko.SSHClient()
+            ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
+            channelx = ssh_x.invoke_shell()
 
+            ssh_y = paramiko.SSHClient()
+            ssh_y.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_y.connect(y_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
+            channely = ssh_y.invoke_shell()
+
+            self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
+            radar_thread = Radar_Main_Thread([channelx, channely], self.coordinates,
+                                             ["z:/radar_x.csv", "y:/radar_y.csv"],
+                                             main_window.matlab_thread.stop_event, self.canvas)
+            radar_thread.start()
 
     def stop(self):
         main_window.matlab_thread.stop_event.set()
@@ -580,16 +609,40 @@ class Schema_Page(QMainWindow):
         print("Stopping")
 
 def display_states(queue,coordinates,canvas):
-    state = queue.get()
-    for i in range(len(coordinates)):
+    if(len(queue)==1):
+        state = queue[0]
+        for i in range(len(coordinates)):
+                #     # this will give us the number of seat, and we can access the relevant frame
+            if (state[i][-1] == 2):
+                brush = QtGui.QBrush(QtCore.Qt.red)
+                canvas[i].setBrush(brush)
+            else:
+                brush = QtGui.QBrush(QtCore.Qt.darkGreen)
+                canvas[i].setBrush(brush)
+    else:
+        x_state = queue[0]
+        y_state = queue[1]
+        x_state = np.array(x_state)
+        y_state = np.array(y_state)
+        min_size = min(len(x_state),len(y_state))
+        sum_state = x_state[0:min_size]+y_state[0:min_size]
+        # if both is 1 then the sum is 2 -> so it is available
+        # if both is 2 then the sum is 4-> so it is not available
+        # if the sum is 3 it is stationary in 1 d but not in the other
+        # so there might be an error so we will label it as yellow
+
+        sum_state = sum_state[0]
+        for i in range(len(coordinates)):
             #     # this will give us the number of seat, and we can access the relevant frame
-        if (state[i][-1] == 2):
-            brush = QtGui.QBrush(QtCore.Qt.red)
-            canvas[i].setBrush(brush)
-        else:
-            brush = QtGui.QBrush(QtCore.Qt.darkGreen)
-            canvas[i].setBrush(brush)
-    queue.queue.clear()
+            if (sum_state[i][-1] == 4):
+                brush = QtGui.QBrush(QtCore.Qt.red)
+                canvas[i].setBrush(brush)
+            elif (sum_state[i][-1] == 2):
+                brush = QtGui.QBrush(QtCore.Qt.darkGreen)
+                canvas[i].setBrush(brush)
+            else:
+                brush = QtGui.QBrush(QtCore.Qt.darkYellow)
+                canvas[i].setBrush(brush)
 
 
 # create the application
@@ -603,6 +656,5 @@ main_window.show()
 
 # run the application
 app.exec_()
-
 
 
