@@ -225,7 +225,6 @@ class Seat_Input(QMainWindow):
         super().__init__()
         self.mode = mode
         self.no_of_chair = no_of_chair
-        print(no_of_chair)
 
         # set the title
         self.setWindowTitle("Seat Coordinates")
@@ -262,7 +261,6 @@ class Seat_Input(QMainWindow):
         self.entry_list= []
         self.entry_count = 0
         for i in range(0,no_of_chair):
-            print("entering for loop")
             label= QLabel("Seat Number "+ str(i+1))
             label.setFont(QFont('Arial', 10))
             main_layout.addWidget(label, i+2, 0, 1, 1, Qt.AlignCenter)
@@ -318,25 +316,33 @@ class Seat_Input(QMainWindow):
         self.hide()
         main_window.schema_selection_window.display_schema(self.mode)
 
+
+
+
 def start_sensor(shell, seat_coordinates, file_path,array):
     print("Running start sensor")
     start_time = time.time()
     shell.send("./Runme \n")
-    print("checking if it is done")
     while (1):
         output = shell.recv(1024)
         output_str = output.decode()
         if ("done" in output_str):
             break
-    time.sleep(1)
-    try:
-        state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
-        print("matlab state",state)
-        array.append(state)
-        print("time taken",time.time()-start_time)
-        os.remove(file_path)
-    except:
+    print("time sensor is done",time.time()-start_time)
+    # at this point the file might not have sufficent frames or it might even be stopped halfway by other threads
+    excel_start = time.time()
+    while(os.path.getsize(file_path)<=52000):
+        # wait for 0.5 seconds and retry
         pass
+    print("time taken for excel to send over",time.time()-excel_start)
+    matlab_time = time.time()
+    state = main_window.matlab_thread.engine.IR_UWB_function(file_path, matlab.int32(seat_coordinates))
+    print("matlab time taken",time.time()-matlab_time)
+    print("matlab state",state)
+    array.extend(state)
+    print("time taken",time.time()-start_time)
+    # os.rename(file_path,"z:/radar"+str(time.localtime())+".csv")
+    os.remove(file_path)
 
 class Running_Radar(QtCore.QThread):
     def __init__(self, shell,coordinates,file_path,queue):
@@ -346,7 +352,6 @@ class Running_Radar(QtCore.QThread):
         self.file_path=  file_path
         self.queue = queue
     def run(self):
-        print("going to run start sensor")
         start_sensor(self.shell,self.coordinates,self.file_path,self.queue)
 
 class Radar_Main_Thread(QtCore.QThread):
@@ -368,7 +373,6 @@ class Radar_Main_Thread(QtCore.QThread):
         while not self.event.is_set():
             if(len(self.channel_list)==1):
                 # create a single instance of a thread to run the code
-                print("entering while loop for thread creation")
                 state_array =[]
                 radar_thread = Running_Radar(self.channel_list[0],self.coordinates,self.paths[0],state_array)
                 radar_thread.start()
@@ -377,8 +381,8 @@ class Radar_Main_Thread(QtCore.QThread):
                 radar_thread.wait()
                 display_states([state_array],self.coordinates,self.canvas)
             else:
-                x_coordinates = self.coordinates[0::2]
-                y_coordinates = self.coordinates[1::2]
+                x_coordinates = [i[0] for i in self.coordinates]
+                y_coordinates = [i[1] for i in self.coordinates]
                 x_state = []
                 y_state = []
                 radar_thread_x = Running_Radar(self.channel_list[0],x_coordinates,self.paths[0],x_state)
@@ -387,8 +391,8 @@ class Radar_Main_Thread(QtCore.QThread):
                 radar_thread_y.start()
                 # after this one instance of the thread has completed so we can call the display function
                 # to display the states
-                radar_thread_x.wait()
                 radar_thread_y.wait()
+                radar_thread_x.wait()
                 display_states([x_state,y_state],self.coordinates,self.canvas)
                 pass
 
@@ -533,6 +537,7 @@ class Schema_Page(QMainWindow):
             for i in range(len(self.coordinates) // 2):
                 seat_coordinates.append([x_coordinates[i], y_coordinates[i]])
             seat_coordinates = sorted(seat_coordinates)
+            # need to assign it back to seat_coordinates
             self.coordinates = seat_coordinates
             temp_coordinates = np.divide(seat_coordinates, 50) - 1
             temp_coordinates = temp_coordinates.tolist()
@@ -593,7 +598,7 @@ class Schema_Page(QMainWindow):
 
             self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
             radar_thread = Radar_Main_Thread([channelx, channely], self.coordinates,
-                                             ["z:/radar_x.csv", "y:/radar_y.csv"],
+                                             ["z:/radar_x.csv", "Y:/radar_y.csv"],
                                              main_window.matlab_thread.stop_event, self.canvas)
             radar_thread.start()
 
@@ -624,14 +629,12 @@ def display_states(queue,coordinates,canvas):
         y_state = queue[1]
         x_state = np.array(x_state)
         y_state = np.array(y_state)
-        min_size = min(len(x_state),len(y_state))
-        sum_state = x_state[0:min_size]+y_state[0:min_size]
+        # min_size = min(len(x_state[0]),len(y_state[0]))
+        sum_state = x_state+y_state
         # if both is 1 then the sum is 2 -> so it is available
         # if both is 2 then the sum is 4-> so it is not available
         # if the sum is 3 it is stationary in 1 d but not in the other
         # so there might be an error so we will label it as yellow
-
-        sum_state = sum_state[0]
         for i in range(len(coordinates)):
             #     # this will give us the number of seat, and we can access the relevant frame
             if (sum_state[i][-1] == 4):
@@ -641,7 +644,7 @@ def display_states(queue,coordinates,canvas):
                 brush = QtGui.QBrush(QtCore.Qt.darkGreen)
                 canvas[i].setBrush(brush)
             else:
-                brush = QtGui.QBrush(QtCore.Qt.darkYellow)
+                brush = QtGui.QBrush(QtCore.Qt.yellow)
                 canvas[i].setBrush(brush)
 
 

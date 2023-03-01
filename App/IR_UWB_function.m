@@ -1,7 +1,6 @@
 % this will be the offical script 
 %% Reading the CSV File
-function likelystates = IR_UWB_function(file_path,seat_location)
-close all
+function likelystates = IR_UWB_function(file_path,seat_location)    
 try
 data =  csvread(file_path); 
 %% Converting the file into complex numbers
@@ -58,7 +57,6 @@ detector = phased.CFARDetector('Method','CA',...
 Z_detect = detector(Z,1:141);
 Z_detect = Z_detect .' ;
 detected_signal = Z_detect .* envelope_clean_signal ;
-figure;
 imagesc(detected_signal);
 
 %% need to fill up the detection 

@@ -1,10 +1,11 @@
 % this will be the offical script 
 %% Reading the CSV File
 % function likelystates = sample(seat_location)
-% close all
+close all
 % try
 % tic
-data =  csvread('z:\radar_x.csv'); % later change this location so it can get the right excel from the rpi
+path = "radartime.struct_time(tm_year=2023, tm_mon=3, tm_mday=1, tm_hour=15, tm_min=13, tm_sec=19, tm_wday=2, tm_yday=60, tm_isdst=0)"
+data =  csvread('y:/radar_y.csv'); % later change this location so it can get the right excel from the rpi
 %% Converting the file into complex numbers
 recieved_signal = data(:,1:141) +1j*data(:,142:end);
 count = size(recieved_signal);
