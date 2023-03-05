@@ -439,7 +439,7 @@ class Schema_Page(QMainWindow):
         side_widget = QWidget()
         side_frame = QGridLayout()
         side_widget.setLayout(side_frame)
-        y_label = QLabel("Distance from the sensor in the Y direction")
+        y_label = QLabel("Distance from the sensor in the \n Y direction")
         y_label.setFont(QFont("Arial",13))
         side_frame.addWidget(y_label,0,1,1,1,Qt.AlignCenter)
         transform = QTransform()
@@ -465,10 +465,41 @@ class Schema_Page(QMainWindow):
         self.rightFrame.addWidget(start_button, 1, 0, 1, 1, Qt.AlignCenter)
         main_layout.addWidget(rightSide,1,2,1,1,Qt.AlignCenter)
 
+        # adding a legend layout
+        legend_widget = QWidget()
+        self.legend_layout = QGridLayout()
+        legend_widget.setLayout(self.legend_layout)
+        # create
+        for i in range(3):
+            vertical_widget = QWidget()
+            vertical_layout = QVBoxLayout()
+            vertical_widget.setLayout(vertical_layout)
+            scene = QtWidgets.QGraphicsScene()
+            view = QtWidgets.QGraphicsView(scene)
+            rect = scene.addRect(0, 0, 65, 66)
+            if(i==0):
+                pen = QtGui.QPen(QtCore.Qt.black)
+                brush = QtGui.QBrush(QtCore.Qt.darkGreen)
+                label = QLabel("Available")
+            elif(i==1):
+                pen = QtGui.QPen(QtCore.Qt.black)
+                brush = QtGui.QBrush(QtCore.Qt.red)
+                label = QLabel("Occupied")
+            else:
+                pen = QtGui.QPen(QtCore.Qt.black)
+                brush = QtGui.QBrush(QtCore.Qt.yellow)
+                label = QLabel("Ambiguous")
+            rect.setPen(pen)
+            rect.setBrush(brush)
+            vertical_layout.addWidget(view)
+            vertical_layout.addWidget(label)
+            self.legend_layout.addWidget(vertical_widget,0,i,1,1,Qt.AlignCenter)
+
+        main_layout.addWidget(legend_widget,0,2,1,1,Qt.AlignRight)
         seat_widget = QWidget()
         seat_frame = QGridLayout()
         seat_widget.setLayout(seat_frame)
-        main_layout.addWidget(seat_widget, 1, 1, 1, 1, Qt.AlignLeft)
+        main_layout.addWidget(seat_widget, 1, 1, 1, 1, Qt.AlignRight)
 
         desktop = QDesktopWidget()
         screen_size = desktop.screenGeometry(0).size()
@@ -484,7 +515,7 @@ class Schema_Page(QMainWindow):
             print(temp_coordinates)
 
             if(mode):
-                self.setFixedSize(screen_width / (1366 / 1200), screen_height / (768 / 250))
+                self.setFixedSize(screen_width / (1366 / 1250), screen_height / (768 / 350))
                 side_widget.deleteLater()
                 for r in range(10):
                     vertical_layout = QVBoxLayout()
@@ -510,7 +541,7 @@ class Schema_Page(QMainWindow):
                 # the laptop used have a resolution of 1366 768
                 # so if 1366 is mapped to 500 and 768 is mapped to 650
 
-                self.setFixedSize(screen_width / ( 1366/700), screen_height/(768/680))
+                self.setFixedSize(screen_width / ( 1366/720), screen_height/(768/710))
                 top_widget.deleteLater()
                 for r in range(10):
                     label = QLabel(str((r + 1) * 50))
@@ -572,20 +603,23 @@ class Schema_Page(QMainWindow):
         self.start_label.setText("SSH into RPI")
         stop_button = QPushButton("Stop", self)
         stop_button.setFont(QFont('Arial', 10))
-        stop_button.clicked.connect(self.stop)
+
         stop_button.setContentsMargins(10, 10, 10, 10)
         self.rightFrame.addWidget(stop_button, 1, 0, 1, 1, Qt.AlignCenter)
         QApplication.processEvents() # Force GUI to update
         if(self.mode!=2):
+
             ssh_x = paramiko.SSHClient()
             ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
             channel = ssh_x.invoke_shell()
+            stop_button.clicked.connect(lambda: self.stop([channel],[ssh_x]))
             self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
             radar_thread = Radar_Main_Thread([channel],self.coordinates,["z:/radar_x.csv"],
                                              main_window.matlab_thread.stop_event,self.canvas)
             radar_thread.start()
         else:
+
             ssh_x = paramiko.SSHClient()
             ssh_x.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh_x.connect(x_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
@@ -595,15 +629,19 @@ class Schema_Page(QMainWindow):
             ssh_y.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh_y.connect(y_sensor_ip, 22, username="pi", password="raspberry", look_for_keys=False)
             channely = ssh_y.invoke_shell()
-
+            stop_button.clicked.connect(lambda: self.stop([channelx,channely], [ssh_x,ssh_y]))
             self.start_label.setText("Running RADAR \n              &\n MATLAB CODE")
             radar_thread = Radar_Main_Thread([channelx, channely], self.coordinates,
                                              ["z:/radar_x.csv", "Y:/radar_y.csv"],
                                              main_window.matlab_thread.stop_event, self.canvas)
             radar_thread.start()
 
-    def stop(self):
+    def stop(self,channel,server):
         main_window.matlab_thread.stop_event.set()
+        for i in channel:
+            i.close()
+        for i in server:
+            i.close()
         self.start_label.setText("Press Start to begin")
         start_button = QPushButton("Start", self)
         start_button.setFont(QFont('Arial', 10))
