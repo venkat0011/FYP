@@ -220,7 +220,7 @@ def check_spacing(entry_list,mode):
         else:
             return False
 
-class Seat_Input(QMainWindow):
+class Seat_Input(QMainWindow):  
     def __init__(self,mode,no_of_chair):
         super().__init__()
         self.mode = mode
